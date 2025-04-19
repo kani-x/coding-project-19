@@ -1,19 +1,68 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Gallery from './components/Gallery';
-import './App.css'; // Reuse the existing CSS file (or replace with styles.css later)
+import DestinationSelector from './components/DestinationSelector';
+import './App.css';
 
 function App() {
   const [tours, setTours] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [selectedDestination, setSelectedDestination] = useState('all');
 
-  // Function to remove a tour by ID
-  const removeTour = (id) => {
-    setTours(tours.filter((tour) => tour.id !== id));
+  const fetchTours = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('https://course-api.com/react-tours-project');
+      if (!response.ok) throw new Error('Failed to fetch tours');
+      const data = await response.json();
+      setTours(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
+
+  useEffect(() => {
+    fetchTours();
+  }, []);
+
+  const handleRemoveTour = (id) => {
+    setTours(tours.filter(tour => tour.id !== id));
+  };
+
+  const handleRefresh = () => {
+    fetchTours();
+    setSelectedDestination('all');
+  };
+
+  const filteredTours = selectedDestination === 'all' 
+    ? tours 
+    : tours.filter(tour => tour.name === selectedDestination);
 
   return (
     <div className="app">
-      <h1>Tour Comparison App</h1>
-      <Gallery tours={tours} setTours={setTours} onRemove={removeTour} />
+      <h1>Tour Explorer</h1>
+      <DestinationSelector 
+        tours={tours} 
+        selectedDestination={selectedDestination}
+        onSelect={setSelectedDestination}
+      />
+      {loading ? (
+        <h2>Loading tours...</h2>
+      ) : error ? (
+        <h2>Error: {error}</h2>
+      ) : filteredTours.length === 0 ? (
+        <div>
+          <h2>No tours left. Refresh to reload.</h2>
+          <button onClick={handleRefresh}>Refresh</button>
+        </div>
+      ) : (
+        <Gallery 
+          tours={filteredTours} 
+          onRemove={handleRemoveTour} 
+        />
+      )}
     </div>
   );
 }
